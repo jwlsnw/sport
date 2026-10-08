@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시니어 웰에이징 통합 헬스케어 평가 및 8주 자동 운동처방 시스템</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Noto Sans KR Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            body {
+                background-color: #ffffff !important;
+                padding: 0 !important;
+                color: #000000 !important;
+            }
+            .container, main {
+                max-width: 100% !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .shadow-xl, .shadow-lg, .shadow-md, .shadow-sm, .shadow {
+                box-shadow: none !important;
+            }
+            .border {
+                border-color: #cbd5e1 !important;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+            .tab-content {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-50 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-indigo-600 p-2 rounded-lg shadow-inner">
+                        <i class="fa-solid fa-heart-pulse text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">스마트 웰에이징(Well-Aging) Lab</h1>
+                        <p class="text-xs text-indigo-200">보행·근력·체성분·균형 기반 통합 8주 맞춤 운동처방 시스템</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="window.print()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-xs font-semibold transition flex items-center gap-1.5 shadow">
+                        <i class="fa-solid fa-print"></i> 리포트/처방전 인쇄
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="bg-white border-b border-slate-200 sticky top-16 z-40 no-print shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav class="flex space-x-6 overflow-x-auto" aria-label="Tabs">
+                <button id="tab-btn-input" onclick="switchTab('input')" class="border-indigo-600 text-indigo-600 py-3.5 px-2 border-b-2 font-bold text-sm flex items-center gap-2 tab-btn whitespace-nowrap">
+                    <i class="fa-solid fa-clipboard-user"></i> 1. 신체기능 측정 입력
+                </button>
+                <button id="tab-btn-result" onclick="switchTab('result')" class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-3.5 px-2 border-b-2 font-medium text-sm flex items-center gap-2 tab-btn whitespace-nowrap">
+                    <i class="fa-solid fa-chart-pie"></i> 2. 종합 결과 및 차트 진단
+                </button>
+                <button id="tab-btn-prescription" onclick="switchTab('prescription')" class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-3.5 px-2 border-b-2 font-medium text-sm flex items-center gap-2 tab-btn whitespace-nowrap">
+                    <i class="fa-solid fa-dumbbell"></i> 3. 8주 자동 맞춤 운동 처방전
+                </button>
+                <button id="tab-btn-history" onclick="switchTab('history')" class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 py-3.5 px-2 border-b-2 font-medium text-sm flex items-center gap-2 tab-btn whitespace-nowrap">
+                    <i class="fa-solid fa-folder-open"></i> 4. 측정 히스토리
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: INPUT SECTION -->
+        <section id="tab-input" class="tab-content block">
+            
+            <!-- Quick Preset Demo Buttons Bar -->
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-2 text-indigo-900 font-bold text-sm">
+                    <i class="fa-solid fa-wand-magic-sparkles text-indigo-600 text-base"></i>
+                    <span>빠른 평가 테스트용 샘플 데이터 선택:</span>
+                </div>
+                <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                    <button onclick="loadPreset('fall')" class="flex-1 md:flex-none px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 rounded-lg text-xs font-bold transition border border-red-200">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> 🚨 낙상 고위험군 예시
+                    </button>
+                    <button onclick="loadPreset('sarcopenia')" class="flex-1 md:flex-none px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-xs font-bold transition border border-amber-200">
+                        <i class="fa-solid fa-weight-scale mr-1"></i> ⚠️ 근감소증 위험군 예시
+                    </button>
+                    <button onclick="loadPreset('gait')" class="flex-1 md:flex-none px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg text-xs font-bold transition border border-purple-200">
+                        <i class="fa-solid fa-person-walking mr-1"></i> 🚶 보행속도 저하군 예시
+                    </button>
+                    <button onclick="loadPreset('healthy')" class="flex-1 md:flex-none px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-xs font-bold transition border border-emerald-200">
+                        <i class="fa-solid fa-circle-check mr-1"></i> ✅ 건강 어르신 예시
+                    </button>
+                </div>
+            </div>
+
+            <form id="assessmentForm" onsubmit="event.preventDefault(); runEvaluation();">
+                <!-- Personal Info Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 mb-6 border border-slate-200">
+                    <h2 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2 border-b pb-3">
+                        <i class="fa-solid fa-id-card text-indigo-600"></i> 대상자(어르신) 및 측정 지도자 정보
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">어르신 성명 *</label>
+                            <input type="text" id="seniorName" required placeholder="예: 김순자" value="김순자" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">연령 (세) *</label>
+                            <input type="number" id="seniorAge" required min="50" max="110" value="76" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">성별 *</label>
+                            <select id="seniorGender" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                <option value="female" selected>여성 (Female)</option>
+                                <option value="male">남성 (Male)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">측정 지도자 (학번/이름)</label>
+                            <input type="text" id="evaluatorName" placeholder="예: 체육학과 이현우" value="체육학과 헬스케어팀" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4 Core Metrics Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Metric 1: Body Composition -->
+                    <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500 border-t border-r border-b border-slate-200">
+                        <div class="flex items-center justify-between mb-4 border-b pb-2">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-weight-scale text-blue-500"></i> 1. 체성분 (Body Composition)
+                            </h3>
+                            <span class="text-[11px] font-medium text-slate-400">InBody / BIA</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">신장 (cm)</label>
+                                <input type="number" step="0.1" id="height" value="152.0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">체중 (kg)</label>
+                                <input type="number" step="0.1" id="weight" value="54.0" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">골격근량지수 (SMI, kg/m²)</label>
+                                <input type="number" step="0.1" id="smi" value="5.2" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700">
+                                <p class="text-[10px] text-slate-400 mt-0.5">AWGS 기준: 남&lt;7.0 / 여&lt;5.7</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">체지방률 (%)</label>
+                                <input type="number" step="0.1" id="bodyFat" value="34.5" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric 2: Muscle Strength -->
+                    <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-emerald-500 border-t border-r border-b border-slate-200">
+                        <div class="flex items-center justify-between mb-4 border-b pb-2">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-hand-fist text-emerald-500"></i> 2. 근력 (Muscle Strength)
+                            </h3>
+                            <span class="text-[11px] font-medium text-slate-400">악력 및 하체근력</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">악력 (Handgrip, kg)</label>
+                                <input type="number" step="0.1" id="gripStrength" value="15.2" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700">
+                                <p class="text-[10px] text-slate-400 mt-0.5">AWGS 기준: 남&lt;28kg / 여&lt;18kg</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">30초 의자일어서기 (CST, 회)</label>
+                                <input type="number" id="cstReps" value="9" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700">
+                                <p class="text-[10px] text-slate-400 mt-0.5">하체 근력 (기준: 13회 이상)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric 3: Balance Ability -->
+                    <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-amber-500 border-t border-r border-b border-slate-200">
+                        <div class="flex items-center justify-between mb-4 border-b pb-2">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-person-praying text-amber-500"></i> 3. 균형능력 (Balance Ability)
+                            </h3>
+                            <span class="text-[11px] font-medium text-slate-400">낙상 위험도</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">외발서기 (Single-Leg, 초)</label>
+                                <input type="number" step="0.1" id="singleLeg" value="3.5" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700">
+                                <p class="text-[10px] text-slate-400 mt-0.5">5.0초 미만 시 균형 저하</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">TUG 검사 (Timed Up & Go, 초)</label>
+                                <input type="number" step="0.1" id="tugTime" value="14.2" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-700">
+                                <p class="text-[10px] text-slate-400 mt-0.5">12.0초 이상 시 낙상 고위험군</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Metric 4: Gait Speed -->
+                    <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500 border-t border-r border-b border-slate-200">
+                        <div class="flex items-center justify-between mb-4 border-b pb-2">
+                            <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-person-walking text-purple-500"></i> 4. 보행속도 (Gait Speed)
+                            </h3>
+                            <span class="text-[11px] font-medium text-slate-400">10m 보행 검사</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">10m 통과시간 (초)</label>
+                                <input type="number" step="0.1" id="gaitTime" value="14.5" oninput="calculateGaitSpeed()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">자동 계산 보행속도 (m/s)</label>
+                                <input type="text" id="gaitSpeed" readonly value="0.69" class="w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-sm font-black text-red-600">
+                                <p class="text-[10px] text-slate-400 mt-0.5">0.80 m/s 미만 시 보행 장애</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end">
+                    <button type="submit" class="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-indigo-200 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-base">
+                        <i class="fa-solid fa-calculator"></i> 종합 측정 평가 및 8주 맞춤 처방전 자동 생성
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- TAB 2: COMPREHENSIVE RESULT & DIAGNOSIS -->
+        <section id="tab-result" class="tab-content hidden">
+            <!-- Print Header (Print Only) -->
+            <div class="hidden print-only mb-6 border-b-2 border-slate-800 pb-3">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h1 class="text-2xl font-black text-slate-900">시니어 신체기능 종합 평가 및 8주 운동 처방 리포트</h1>
+                        <p class="text-xs text-slate-600">발행기관: 대학 체육학과 스마트 웰에이징 프로젝트 Lab</p>
+                    </div>
+                    <div class="text-right text-xs text-slate-500">
+                        발행일: <span id="printDate">2026. 10. 08</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Senior Profile Banner -->
+            <div class="bg-slate-900 text-white rounded-xl p-6 shadow-xl mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <span id="resSeniorName" class="text-2xl font-black text-white">김순자 어르신</span>
+                            <span id="resSeniorBadge" class="px-3 py-1 bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 rounded-full text-xs font-semibold">76세 / 여성</span>
+                        </div>
+                        <p class="text-slate-400 text-xs mt-1.5 flex items-center gap-3">
+                            <span><i class="fa-solid fa-calendar-day text-indigo-400"></i> 측정일: <span id="resDate">2026. 10. 08</span></span>
+                            <span><i class="fa-solid fa-user-check text-indigo-400"></i> 담당 지도자: <span id="resEvaluator">체육학과 헬스케어팀</span></span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4 bg-slate-800/90 px-5 py-3 rounded-xl border border-slate-700 w-full md:w-auto justify-between md:justify-start">
+                        <div class="text-left md:text-right">
+                            <div class="text-xs text-slate-400">신체 기능 종합 점수</div>
+                            <div class="text-2xl font-black text-amber-400"><span id="resTotalScore">58</span> <span class="text-xs text-slate-400 font-normal">/ 100점</span></div>
+                        </div>
+                        <div id="resRiskBadge" class="px-4 py-2 bg-red-500/20 text-red-300 border border-red-500/40 rounded-lg text-center text-xs font-bold">
+                            [낙상 고위험군]
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visual Radar Chart & Detailed Metrics -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+                <!-- Radar Chart -->
+                <div class="lg:col-span-5 bg-white rounded-xl shadow-md p-6 border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-radar text-indigo-600"></i> 4대 영역 백분율 표준 다이어그램
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">AWGS 및 노인 체력 표준 대비 달성율(100점 기준)</p>
+                    </div>
+                    <div class="relative w-full aspect-square flex items-center justify-center p-2">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Metrics Status Breakdown -->
+                <div class="lg:col-span-7 bg-white rounded-xl shadow-md p-6 border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 border-b pb-3">
+                        <i class="fa-solid fa-list-check text-indigo-600"></i> 영역별 판정 및 임상적 위험도 상세
+                    </h3>
+
+                    <div class="space-y-3">
+                        <!-- Body Comp -->
+                        <div id="statusSmi" class="p-3 rounded-lg border flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fa-solid fa-weight-scale"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-slate-800">체성분 (SMI 근육량)</div>
+                                    <div id="valSmi" class="text-[11px] text-slate-500">SMI: 5.2 kg/m² (기준: &ge; 5.7)</div>
+                                </div>
+                            </div>
+                            <span id="badgeSmi" class="px-2.5 py-1 text-xs font-semibold rounded-md">판정중</span>
+                        </div>
+
+                        <!-- Muscle Strength Upper -->
+                        <div id="statusGrip" class="p-3 rounded-lg border flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fa-solid fa-hand-fist"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-slate-800">상체 근력 (악력)</div>
+                                    <div id="valGrip" class="text-[11px] text-slate-500">악력: 15.2 kg (기준: &ge; 18.0)</div>
+                                </div>
+                            </div>
+                            <span id="badgeGrip" class="px-2.5 py-1 text-xs font-semibold rounded-md">판정중</span>
+                        </div>
+
+                        <!-- Muscle Strength Lower -->
+                        <div id="statusCst" class="p-3 rounded-lg border flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fa-solid fa-chair"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-slate-800">하체 근력 (30초 의자일어서기)</div>
+                                    <div id="valCst" class="text-[11px] text-slate-500">기록: 9회 (기준: &ge; 13)</div>
+                                </div>
+                            </div>
+                            <span id="badgeCst" class="px-2.5 py-1 text-xs font-semibold rounded-md">판정중</span>
+                        </div>
+
+                        <!-- Balance -->
+                        <div id="statusTug" class="p-3 rounded-lg border flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fa-solid fa-person-praying"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-slate-800">균형 능력 (TUG / 외발서기)</div>
+                                    <div id="valTug" class="text-[11px] text-slate-500">TUG: 14.2초 / 외발: 3.5초</div>
+                                </div>
+                            </div>
+                            <span id="badgeTug" class="px-2.5 py-1 text-xs font-semibold rounded-md">판정중</span>
+                        </div>
+
+                        <!-- Gait Speed -->
+                        <div id="statusGait" class="p-3 rounded-lg border flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">
+                                    <i class="fa-solid fa-person-walking"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-slate-800">보행 속도 (10m 보행검사)</div>
+                                    <div id="valGait" class="text-[11px] text-slate-500">속도: 0.69 m/s (기준: &ge; 0.80)</div>
+                                </div>
+                            </div>
+                            <span id="badgeGait" class="px-2.5 py-1 text-xs font-semibold rounded-md">판정중</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comprehensive Academic Opinion Box -->
+            <div class="bg-indigo-50/80 border border-indigo-200 rounded-xl p-5 mb-6">
+                <h3 class="font-bold text-indigo-900 text-sm mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-user-doctor text-indigo-600"></i> 학술적 통합 진단 소견
+                </h3>
+                <p id="diagnosisSummaryText" class="text-xs text-indigo-950 leading-relaxed">
+                    입력된 데이터를 바탕으로 진단을 수행해 주세요.
+                </p>
+            </div>
+        </section>
+
+        <!-- TAB 3: DYNAMIC 8-WEEK EXERCISE PRESCRIPTION -->
+        <section id="tab-prescription" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-md p-6 mb-6 border border-slate-200">
+                <!-- Header Tag -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-6 gap-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-notes-medical text-emerald-600"></i> 8주 맞춤형 시니어 운동 처방전 (Automated Prescription)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">어르신의 신체기능 취약 영역에 맞춰 자동 매핑된 단계별 스마트 운동 프로토콜입니다.</p>
+                    </div>
+                    <div id="prescTargetBadge" class="px-3 py-1.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-bold">
+                        [진단 그룹 기반 운동처방]
+                    </div>
+                </div>
+
+                <!-- Prescription Phase Cards (3 Phases) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <!-- Phase 1 Card -->
+                    <div class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold">1~2주차 (Phase 1)</span>
+                                <span class="text-xs font-bold text-indigo-700">적응 & 코어 안정을 위한 가동성</span>
+                            </div>
+                            <h4 id="p1Title" class="font-bold text-slate-800 text-sm mb-2">초기 신경계 적응 및 관절 가동성</h4>
+                            <div id="p1List" class="text-xs text-slate-700 space-y-2">
+                                <!-- Dynamic JS Injection -->
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-indigo-100/80 text-[11px] text-indigo-800 font-medium">
+                            <i class="fa-solid fa-clock"></i> 주 3회 / 회당 45분 / RPE 11-12 (가볍게)
+                        </div>
+                    </div>
+
+                    <!-- Phase 2 Card -->
+                    <div class="bg-emerald-50/50 rounded-xl p-5 border border-emerald-100 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="px-2.5 py-1 bg-emerald-600 text-white rounded-md text-xs font-bold">3~6주차 (Phase 2)</span>
+                                <span class="text-xs font-bold text-emerald-700">근력 점진 과부하 & 균형 집중</span>
+                            </div>
+                            <h4 id="p2Title" class="font-bold text-slate-800 text-sm mb-2">타깃 주동근 강도를 위한 과부하</h4>
+                            <div id="p2List" class="text-xs text-slate-700 space-y-2">
+                                <!-- Dynamic JS Injection -->
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-emerald-100/80 text-[11px] text-emerald-800 font-medium">
+                            <i class="fa-solid fa-clock"></i> 주 3회 / 회당 50분 / RPE 13-14 (약간 힘들게)
+                        </div>
+                    </div>
+
+                    <!-- Phase 3 Card -->
+                    <div class="bg-purple-50/50 rounded-xl p-5 border border-purple-100 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="px-2.5 py-1 bg-purple-600 text-white rounded-md text-xs font-bold">7~8주차 (Phase 3)</span>
+                                <span class="text-xs font-bold text-purple-700">실전 복합 보행 & 민첩성</span>
+                            </div>
+                            <h4 id="p3Title" class="font-bold text-slate-800 text-sm mb-2">동적 보행 응용 및 일상생활 복귀</h4>
+                            <div id="p3List" class="text-xs text-slate-700 space-y-2">
+                                <!-- Dynamic JS Injection -->
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-purple-100/80 text-[11px] text-purple-800 font-medium">
+                            <i class="fa-solid fa-clock"></i> 주 3-4회 / 회당 60분 / RPE 14-15 (힘들게)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8-Week Detailed Action Routine Table -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-week text-indigo-600"></i> 주차별 주간 트레이닝 세부 일정표
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse border border-slate-200">
+                            <thead>
+                                <tr class="bg-slate-100 text-xs text-slate-700">
+                                    <th class="p-2.5 border border-slate-200 w-16 text-center">주차</th>
+                                    <th class="p-2.5 border border-slate-200">주요 트레이닝 목표</th>
+                                    <th class="p-2.5 border border-slate-200">추천 운동 종목 및 세트 수</th>
+                                    <th class="p-2.5 border border-slate-200 w-28 text-center">강도 / 휴식</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weeklyRoutineTableBody" class="text-xs text-slate-700 divide-y divide-slate-200">
+                                <!-- Dynamic Injection via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Special Clinical Advice & Nutrition Tips -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <h4 class="font-bold text-amber-900 text-xs mb-1.5 flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield-halved text-amber-600"></i> 운동 지도 시 안전 유의사항
+                        </h4>
+                        <p id="safetyAdviceText" class="text-xs text-amber-800 leading-relaxed">
+                            운동 전후 반드시 혈압을 확인하고 어지럼증 호소 시 즉시 중단합니다. 모든 균형 운동 시에는 지도자의 밀착 보조가 필요합니다.
+                        </p>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 class="font-bold text-blue-900 text-xs mb-1.5 flex items-center gap-1.5">
+                            <i class="fa-solid fa-utensils text-blue-600"></i> 영양 및 영양섭취(단백질) 권장사항
+                        </h4>
+                        <p id="nutritionAdviceText" class="text-xs text-blue-800 leading-relaxed">
+                            근육합성을 위해 체중 1kg당 1.2g 이상의 단백질 섭취(계란, 두부, 살코기 등)를 권장하며, 운동 직후 30분 이내 단백질 섭취가 유효합니다.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: HISTORY & SAVED ASSESSMENTS -->
+        <section id="tab-history" class="tab-content hidden">
+            <div class="bg-white rounded-xl shadow-md p-6 border border-slate-200">
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-database text-indigo-600"></i> 측정 평가 저장 히스토리 (LocalStorage)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">브라우저에 안전하게 보관된 어르신별 이전 평가 기록입니다.</p>
+                    </div>
+                    <button onclick="clearHistory()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition">
+                        <i class="fa-solid fa-trash"></i> 전체 삭제
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b text-xs text-slate-500 font-semibold">
+                                <th class="py-3 px-3">측정일</th>
+                                <th class="py-3 px-3">성명</th>
+                                <th class="py-3 px-3">연령/성별</th>
+                                <th class="py-3 px-3">보행속도</th>
+                                <th class="py-3 px-3">악력</th>
+                                <th class="py-3 px-3">TUG</th>
+                                <th class="py-3 px-3">최종 판정 그룹</th>
+                                <th class="py-3 px-3 text-center">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="text-xs divide-y divide-slate-100">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Global State Variables
+        let radarChartInstance = null;
+        let currentAssessment = null;
+
+        // Presets Data Dictionary
+        const DEMO_PRESETS = {
+            fall: {
+                name: '이순자', age: 79, gender: 'female', evaluator: '체육학과 김낙상조',
+                height: 150.0, weight: 52.0, smi: 5.4, bodyFat: 35.0,
+                gripStrength: 14.5, cstReps: 8, singleLeg: 2.1, tugTime: 14.8, gaitTime: 15.0
+            },
+            sarcopenia: {
+                name: '박철수', age: 75, gender: 'male', evaluator: '체육학과 근육연구팀',
+                height: 165.0, weight: 58.0, smi: 6.2, bodyFat: 28.0,
+                gripStrength: 22.0, cstReps: 10, singleLeg: 6.5, tugTime: 10.5, gaitTime: 11.5
+            },
+            gait: {
+                name: '정정희', age: 73, gender: 'female', evaluator: '체육학과 보행분석조',
+                height: 156.0, weight: 56.0, smi: 6.0, bodyFat: 31.0,
+                gripStrength: 19.0, cstReps: 12, singleLeg: 7.0, tugTime: 10.0, gaitTime: 15.5
+            },
+            healthy: {
+                name: '최영호', age: 68, gender: 'male', evaluator: '체육학과 웰에이징팀',
+                height: 172.0, weight: 68.0, smi: 8.2, bodyFat: 21.0,
+                gripStrength: 34.0, cstReps: 18, singleLeg: 18.0, tugTime: 7.5, gaitTime: 8.5
+            }
+        };
+
+        // Load Preset Handler
+        function loadPreset(key) {
+            const p = DEMO_PRESETS[key];
+            if (!p) return;
+
+            document.getElementById('seniorName').value = p.name;
+            document.getElementById('seniorAge').value = p.age;
+            document.getElementById('seniorGender').value = p.gender;
+            document.getElementById('evaluatorName').value = p.evaluator;
+
+            document.getElementById('height').value = p.height;
+            document.getElementById('weight').value = p.weight;
+            document.getElementById('smi').value = p.smi;
+            document.getElementById('bodyFat').value = p.bodyFat;
+
+            document.getElementById('gripStrength').value = p.gripStrength;
+            document.getElementById('cstReps').value = p.cstReps;
+
+            document.getElementById('singleLeg').value = p.singleLeg;
+            document.getElementById('tugTime').value = p.tugTime;
+
+            document.getElementById('gaitTime').value = p.gaitTime;
+            calculateGaitSpeed();
+
+            runEvaluation();
+        }
+
+        // Calculate Gait Speed
+        function calculateGaitSpeed() {
+            const time = parseFloat(document.getElementById('gaitTime').value);
+            if (time > 0) {
+                const speed = (10 / time).toFixed(2);
+                document.getElementById('gaitSpeed').value = speed;
+            } else {
+                document.getElementById('gaitSpeed').value = '0.00';
+            }
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-600', 'text-indigo-600', 'font-bold');
+                btn.classList.add('border-transparent', 'text-slate-500', 'font-medium');
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            activeBtn.classList.remove('border-transparent', 'text-slate-500', 'font-medium');
+            activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'font-bold');
+
+            if (tabId === 'result' && currentAssessment) {
+                renderRadarChart(currentAssessment);
+            }
+        }
+
+        // Core Evaluation Execution Engine
+        function runEvaluation() {
+            calculateGaitSpeed();
+
+            const name = document.getElementById('seniorName').value || '어르신';
+            const age = parseInt(document.getElementById('seniorAge').value) || 70;
+            const gender = document.getElementById('seniorGender').value;
+            const evaluator = document.getElementById('evaluatorName').value || '담당 지도자';
+
+            const height = parseFloat(document.getElementById('height').value) || 160;
+            const weight = parseFloat(document.getElementById('weight').value) || 60;
+            const smi = parseFloat(document.getElementById('smi').value) || 0;
+            const bodyFat = parseFloat(document.getElementById('bodyFat').value) || 0;
+
+            const grip = parseFloat(document.getElementById('gripStrength').value) || 0;
+            const cst = parseInt(document.getElementById('cstReps').value) || 0;
+
+            const singleLeg = parseFloat(document.getElementById('singleLeg').value) || 0;
+            const tug = parseFloat(document.getElementById('tugTime').value) || 0;
+            const gaitSpeed = parseFloat(document.getElementById('gaitSpeed').value) || 0;
+
+            // AWGS Criteria Rules
+            const isSmiLow = gender === 'male' ? smi < 7.0 : smi < 5.7;
+            const isGripLow = gender === 'male' ? grip < 28.0 : grip < 18.0;
+            const isCstLow = cst < 13;
+            const isBalanceLow = tug >= 12.0 || singleLeg < 5.0;
+            const isGaitLow = gaitSpeed < 0.8;
+
+            // Group Categorization Hierarchy
+            let group = 'D';
+            let groupTitle = '[건강 웰에이징군]';
+            let groupBadgeClass = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+
+            if (tug >= 12.0 || singleLeg < 4.0) {
+                group = 'A';
+                groupTitle = '[낙상 고위험군]';
+                groupBadgeClass = 'bg-red-500/20 text-red-300 border-red-500/40';
+            } else if (isSmiLow || isGripLow) {
+                group = 'B';
+                groupTitle = '[근감소증 위험군]';
+                groupBadgeClass = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+            } else if (isGaitLow) {
+                group = 'C';
+                groupTitle = '[보행속도 저하군]';
+                groupBadgeClass = 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+            }
+
+            // Standardized Sub-scores (0 ~ 100)
+            const smiRef = gender === 'male' ? 7.0 : 5.7;
+            const gripRef = gender === 'male' ? 28.0 : 18.0;
+
+            const scoreSmi = Math.min(100, Math.max(10, Math.round((smi / smiRef) * 75)));
+            const scoreGrip = Math.min(100, Math.max(10, Math.round((grip / gripRef) * 75)));
+            const scoreCst = Math.min(100, Math.max(10, Math.round((cst / 14) * 75)));
+            const scoreBalance = Math.min(100, Math.max(10, Math.round((12 / Math.max(tug, 1)) * 75)));
+            const scoreGait = Math.min(100, Math.max(10, Math.round((gaitSpeed / 0.8) * 75)));
+
+            const totalScore = Math.round((scoreSmi + scoreGrip + scoreCst + scoreBalance + scoreGait) / 5);
+
+            currentAssessment = {
+                id: Date.now(),
+                date: new Date().toLocaleDateString('ko-KR'),
+                name, age, gender, evaluator,
+                height, weight, smi, bodyFat, grip, cst, singleLeg, tug, gaitSpeed,
+                isSmiLow, isGripLow, isCstLow, isBalanceLow, isGaitLow,
+                group, groupTitle, groupBadgeClass, totalScore,
+                scores: [scoreSmi, scoreGrip, scoreCst, scoreBalance, scoreGait]
+            };
+
+            // Update UI & Generate Prescription
+            updateResultsUI(currentAssessment);
+            generatePrescription(currentAssessment);
+            saveToLocalStorage(currentAssessment);
+
+            switchTab('result');
+        }
+
+        // Update Results UI
+        function updateResultsUI(data) {
+            document.getElementById('resSeniorName').innerText = `${data.name} 어르신`;
+            document.getElementById('resSeniorBadge').innerText = `${data.age}세 / ${data.gender === 'male' ? '남성' : '여성'}`;
+            document.getElementById('resDate').innerText = data.date;
+            document.getElementById('resEvaluator').innerText = data.evaluator;
+            document.getElementById('resTotalScore').innerText = data.totalScore;
+
+            const badge = document.getElementById('resRiskBadge');
+            badge.innerText = data.groupTitle;
+            badge.className = `px-4 py-2 border rounded-lg text-center text-xs font-bold ${data.groupBadgeClass}`;
+
+            // Update Status Cards
+            updateMetricBadge('Smi', `SMI: ${data.smi} kg/m²`, !data.isSmiLow);
+            updateMetricBadge('Grip', `악력: ${data.grip} kg`, !data.isGripLow);
+            updateMetricBadge('Cst', `기록: ${data.cst}회`, !data.isCstLow);
+            updateMetricBadge('Tug', `TUG: ${data.tug}초 / 외발: ${data.singleLeg}초`, !data.isBalanceLow);
+            updateMetricBadge('Gait', `속도: ${data.gaitSpeed} m/s`, !data.isGaitLow);
+
+            // Comprehensive Academic Opinion Generation
+            let summary = `<b>${data.name}</b> 어르신의 신체기능 종합 점수는 <b>${data.totalScore}점</b>으로 평가되었으며, <b>${data.groupTitle}</b>에 분류되었습니다.<br><br>`;
+            
+            if (data.group === 'A') {
+                summary += `🚨 <b>진단 소견:</b> TUG(${data.tug}초) 및 외발서기(${data.singleLeg}초) 검사 결과 동적 균형 유지 기능이 매우 저하되어 있어 낙상 사고의 위험이 높습니다. 하체 발목/고관절 지지 전략 개선 및 시각-전정기관 연계 균형 훈련이 시급합니다.`;
+            } else if (data.group === 'B') {
+                summary += `⚠️ <b>진단 소견:</b> 골격근량지수(SMI ${data.smi}kg/m²) 및 악력(${data.grip}kg)이 AWGS 노쇠 진단 기준 미달입니다. 골격근 소실 방지를 위한 근저항성 점진적 과부하 훈련과 필수 아미노산(단백질) 섭취가 필수적입니다.`;
+            } else if (data.group === 'C') {
+                summary += `🚶 <b>진단 소견:</b> 보행 속도가 ${data.gaitSpeed}m/s로 노인 정상 보행 기준(0.8m/s)에 미달합니다. 보폭 확장, 팔저음 협응, 그리고 하지 순발력 강화를 통해 보행 효율성을 개선해야 합니다.`;
+            } else {
+                summary += `✅ <b>진단 소견:</b> 모든 4대 핵심 지표(체성분, 근력, 균형, 보행)가 정상 범위에 속하는 우수한 활력 상태입니다. 현 수준을 유지하고 신경-근육 반응을 극대화하는 복합 기능성 스포츠 프로그램을 추천합니다.`;
+            }
+
+            document.getElementById('diagnosisSummaryText').innerHTML = summary;
+        }
+
+        function updateMetricBadge(key, valText, isNormal) {
+            document.getElementById(`val${key}`).innerText = valText;
+            const b = document.getElementById(`badge${key}`);
+            if (isNormal) {
+                b.innerText = '정상/양호';
+                b.className = 'px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200';
+            } else {
+                b.innerText = '주의/미달';
+                b.className = 'px-2.5 py-1 text-xs font-semibold rounded-md bg-red-100 text-red-800 border border-red-200';
+            }
+        }
+
+        // Render Radar Chart
+        function renderRadarChart(data) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            if (radarChartInstance) radarChartInstance.destroy();
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['체성분(SMI)', '상체근력(악력)', '하체근력(CST)', '균형능력(TUG)', '보행속도(10m)'],
+                    datasets: [{
+                        label: `${data.name} 어르신 지수`,
+                        data: data.scores,
+                        backgroundColor: 'rgba(79, 70, 229, 0.25)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 100,
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Dynamic 8-Week Prescription Engine
+        function generatePrescription(data) {
+            document.getElementById('prescTargetBadge').innerText = `${data.groupTitle} 맞춤형 8주 처방전`;
+
+            const p1L = document.getElementById('p1List');
+            const p2L = document.getElementById('p2List');
+            const p3L = document.getElementById('p3List');
+            const routineTbody = document.getElementById('weeklyRoutineTableBody');
+
+            let p1Items = [], p2Items = [], p3Items = [];
+            let weeklyRoutines = [];
+
+            if (data.group === 'A') { // Fall High Risk
+                p1Items = [
+                    '<b>벽 지지 발목 전략 훈련:</b> 벽을 잡고 뒤꿈치/앞꿈치 들기 (12회 x 2세트)',
+                    '<b>의자 지지 체중 이동:</b> 좌우/전후 중심 이동 유지 (30초 x 3회)',
+                    '<b>코어 및 고관절 가동성:</b> 의자에 앉아 무릎 가슴으로 당기기'
+                ];
+                p2Items = [
+                    '<b>일자 보행(Tandem Walk):</b> 직선 가이드라인 따라 걷기 (5m x 3회)',
+                    '<b>밸런스 패드 서기:</b> 무작위 시각 차단/개방 균형 유지',
+                    '<b>의자 앉았다 일어서기(CST 응용):</b> 저항 밴드 착용 (10회 x 3세트)'
+                ];
+                p3Items = [
+                    '<b>소형 장애물 피하기 보행:</b> 10cm 높이 매트 넘어가기',
+                    '<b>반응형 신호 걷기:</b> 지도자 손짓에 맞춰 방향 급전환 보행',
+                    '<b>실전 TUG 코스 숙달:</b> 반환점 돌기 민첩성 가공'
+                ];
+
+                weeklyRoutines = [
+                    { week: '1~2주', goal: '발목 관절 안정화 및 코어 감각', ex: '의자 지지 체중이동, 발목 굴곡 스트레칭', detail: 'RPE 11 / 세트간 90초 휴식' },
+                    { week: '3~4주', goal: '정적 균형 및 하지 근력 기초', ex: '밸런스 패드 서기, 탄성밴드 무릎 펴기', detail: 'RPE 12 / 세트간 60초 휴식' },
+                    { week: '5~6주', goal: '동적 일자 보행 및 고관절 지지', ex: 'Tandem Walk, 의자 스쿼트, 힐 레이즈', detail: 'RPE 13 / 세트간 60초 휴식' },
+                    { week: '7~8주', goal: '장애물 회피 및 실전 낙상예방', ex: '장애물 보행, TUG 반응형 트레이닝', detail: 'RPE 14 / 세트간 45초 휴식' }
+                ];
+
+                document.getElementById('safetyAdviceText').innerText = '🚨 낙상 위험도가 높으므로 모든 균형 및 장애물 훈련 시 지도자가 손뻗음 거리 내에서 항상 밀착 보조하십시오.';
+            } 
+            else if (data.group === 'B') { // Sarcopenia Risk
+                p1Items = [
+                    '<b>하체 대근육 저항 적응:</b> 의자 터치 스쿼트 (10회 x 2세트)',
+                    '<b>상체 근력 밴드 로우(Row):</b> 탄성 밴드 당기기 (12회 x 2세트)',
+                    '<b>대퇴사두근 등척성 수축:</b> 의자 앉아 무릎 펴고 5초 유지'
+                ];
+                p2Items = [
+                    '<b>점진적 점호 과부하 스쿼트:</b> 모래주머니(0.5kg) 착용 스쿼트',
+                    '<b>밴드 둔근 자극 런지:</b> 제자리 변형 런지 (8회 x 3세트)',
+                    '<b>상체 악력 강화:</b> 핑거 퀴즈 및 악력 링 쥐기'
+                ];
+                p3Items = [
+                    '<b>복합 전신 순환 운동:</b> 덤벨 데드리프트 변형 + 보행',
+                    '<b>계단 오르내리기 파워 훈련:</b> 2개 층 계단 수직 이동',
+                    '<b>하지 신장성 수축 훈련:</b> 천천히 앉기 스쿼트'
+                ];
+
+                weeklyRoutines = [
+                    { week: '1~2주', goal: '신경-근육 동원 및 자세 습득', ex: '의자 스쿼트, 상체 밴드 당기기', detail: 'RPE 11 / 세트간 90초 휴식' },
+                    { week: '3~4주', goal: '골격근 자극 및 과부하 개시', ex: '탄성 밴드 스쿼트, 악력 링 훈련', detail: 'RPE 13 / 세트간 60초 휴식' },
+                    { week: '5~6주', goal: '사지 근육량 및 근력 증대', ex: '0.5kg 모래주머니 착용 런지, 계단 오르기', detail: 'RPE 14 / 세트간 60초 휴식' },
+                    { week: '7~8주', goal: '전신 근체력 및 복합 순환', ex: '파워 스쿼트, 덤벨 로우, 유산소 보행', detail: 'RPE 15 / 세트간 45초 휴식' }
+                ];
+
+                document.getElementById('nutritionAdviceText').innerText = '💡 근감소증 완화를 위해 매 한 끼 단백질 20g 이상(계란 2개, 닭가슴살, 두부 등)과 운동 직후 30분 이내 단백질 음료 섭취를 강력 권장합니다.';
+            }
+            else if (data.group === 'C') { // Gait Speed Deficit
+                p1Items = [
+                    '<b>보행 폼 교정 & 팔저음 협응:</b> 제자리 높이 들고 걷기',
+                    '<b>발가락 뒤꿈치 보행:</b> 보폭 감각 자극 걷기 (10m x 2회)',
+                    '<b>하지 순발력 기초:</b> 제자리 뒤꿈치 빠르게 들기'
+                ];
+                p2Items = [
+                    '<b>보폭 10% 확장 보행:</b> 테이핑 지점 정확히 밟기',
+                    '<b>10m 쾌속 보행 인터벌:</b> 보통 속도 vs 쾌속 인터벌',
+                    '<b>스텝박스 오르내리기:</b> 하지 파워 스텝 훈련'
+                ];
+                p3Items = [
+                    '<b>아질리티 사다리 보행:</b> 민첩성 스텝 사다리 코스',
+                    '<b>방향 전환 보행 훈련:</b> 지그재그 8자 보행',
+                    '<b>지속성 파워 워킹:</b> 15분 지속 쾌속 보행'
+                ];
+
+                weeklyRoutines = [
+                    { week: '1~2주', goal: '보행 자세 정렬 및 리듬감', ex: '제자리 높이 들고 걷기, 팔저음 훈련', detail: 'RPE 11 / 세트간 60초 휴식' },
+                    { week: '3~4주', goal: '보폭 확장 및 하지 순발력', ex: '10m 쾌속 보행 인터벌, 스텝박스', detail: 'RPE 13 / 세트간 45초 휴식' },
+                    { week: '5~6주', goal: '민첩성 및 유산소 보행 능력', ex: '스텝 사다리 훈련, 지그재그 보행', detail: 'RPE 14 / 세트간 45초 휴식' },
+                    { week: '7~8주', goal: '실전 쾌속 보행 완성', ex: '15분 파워 워킹, 복합 TUG 스피드 코스', detail: 'RPE 15 / 세트간 30초 휴식' }
+                ];
+            }
+            else { // Healthy Group
+                p1Items = [
+                    '<b>전신 신체 가동성 & 코어:</b> 하이 플랭크 변형 및 스트레칭',
+                    '<b>기능적 스쿼트 & 런지:</b> 맨몸 전신 웨이트 트레이닝',
+                    '<b>동적 균형 서킷:</b> Y-Balance 기반 중심 잡기'
+                ];
+                p2Items = [
+                    '<b>점진적 저항 트레이닝:</b> 케틀벨/덤벨 스쿼트 & 로우',
+                    '<b>플라이오메트릭 가벼운 자극:</b> 제자리 가벼운 점프/스텝',
+                    '<b>심폐지구력 인터벌:</b> 20분 유산소 조깅 및 보행'
+                ];
+                p3Items = [
+                    '<b>복합 스포츠 기능성 코스:</b> 서킷 트레이닝 완료',
+                    '<b>민첩성 및 순발력 강화:</b> 사다리 & 콘 드릴',
+                    '<b>지속 가능한 활력 유지:</b> 야외 웰니스 스포츠 연계'
+                ];
+
+                weeklyRoutines = [
+                    { week: '1~2주', goal: '기능적 움직임 기초 가동성', ex: '맨몸 스쿼트, Y-Balance 훈련', detail: 'RPE 12 / 세트간 45초 휴식' },
+                    { week: '3~4주', goal: '근력 및 심폐지구력 향상', ex: '덤벨 스쿼트, 20분 유산소 조깅', detail: 'RPE 14 / 세트간 45초 휴식' },
+                    { week: '5~6주', goal: '하지 파워 및 민첩성 극대화', ex: '스텝 콘 드릴, 플라이오메트릭 점프', detail: 'RPE 15 / 세트간 30초 휴식' },
+                    { week: '7~8주', goal: '스포츠 기능성 서킷 완성', ex: '전신 기능성 서킷 트레이닝 3세트', detail: 'RPE 15 / 세트간 30초 휴식' }
+                ];
+            }
+
+            // Inject Lists
+            p1L.innerHTML = p1Items.map(item => `<div class="flex items-start gap-1.5"><i class="fa-solid fa-angle-right text-indigo-500 mt-0.5"></i><div>${item}</div></div>`).join('');
+            p2L.innerHTML = p2Items.map(item => `<div class="flex items-start gap-1.5"><i class="fa-solid fa-angle-right text-emerald-500 mt-0.5"></i><div>${item}</div></div>`).join('');
+            p3L.innerHTML = p3Items.map(item => `<div class="flex items-start gap-1.5"><i class="fa-solid fa-angle-right text-purple-500 mt-0.5"></i><div>${item}</div></div>`).join('');
+
+            // Inject Weekly Routine Table
+            routineTbody.innerHTML = weeklyRoutines.map(r => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-2.5 border border-slate-200 text-center font-bold text-indigo-700">${r.week}</td>
+                    <td class="p-2.5 border border-slate-200 font-semibold text-slate-800">${r.goal}</td>
+                    <td class="p-2.5 border border-slate-200">${r.ex}</td>
+                    <td class="p-2.5 border border-slate-200 text-center text-slate-500">${r.detail}</td>
+                </tr>
+            `).join('');
+        }
+
+        // LocalStorage History Operations
+        function saveToLocalStorage(data) {
+            let history = JSON.parse(localStorage.getItem('seniorHistory') || '[]');
+            history.unshift(data);
+            localStorage.setItem('seniorHistory', JSON.stringify(history));
+            renderHistoryTable();
+        }
+
+        function renderHistoryTable() {
+            const history = JSON.parse(localStorage.getItem('seniorHistory') || '[]');
+            const tbody = document.getElementById('historyTableBody');
+
+            if (history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="py-4 text-center text-slate-400 text-xs">저장된 평가 기록이 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = history.map((item, idx) => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="py-2.5 px-3 text-slate-500">${item.date}</td>
+                    <td class="py-2.5 px-3 font-bold text-slate-800">${item.name}</td>
+                    <td class="py-2.5 px-3">${item.age}세 / ${item.gender === 'male' ? '남성' : '여성'}</td>
+                    <td class="py-2.5 px-3 font-semibold text-indigo-700">${item.gaitSpeed} m/s</td>
+                    <td class="py-2.5 px-3">${item.grip} kg</td>
+                    <td class="py-2.5 px-3">${item.tug} 초</td>
+                    <td class="py-2.5 px-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.groupBadgeClass}">${item.groupTitle}</span>
+                    </td>
+                    <td class="py-2.5 px-3 text-center">
+                        <button onclick="deleteHistoryItem(${idx})" class="text-slate-400 hover:text-red-500 transition px-1">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteHistoryItem(index) {
+            let history = JSON.parse(localStorage.getItem('seniorHistory') || '[]');
+            history.splice(index, 1);
+            localStorage.setItem('seniorHistory', JSON.stringify(history));
+            renderHistoryTable();
+        }
+
+        function clearHistory() {
+            if (confirm('저장된 모든 평가 히스토리를 삭제하시겠습니까?')) {
+                localStorage.removeItem('seniorHistory');
+                renderHistoryTable();
+            }
+        }
+
+        // Initialize App on Window Load
+        window.onload = function() {
+            calculateGaitSpeed();
+            renderHistoryTable();
+            // Run default initial calculation
+            runEvaluation();
+        };
+    </script>
+</body>
+</html>
